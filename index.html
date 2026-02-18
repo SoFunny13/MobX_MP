@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Plan Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Password Gate -->
+    <div id="auth-gate" class="auth-gate">
+        <div class="auth-box">
+            <h2>Media Plan Generator</h2>
+            <p>Enter password to continue</p>
+            <input type="password" id="auth-password" placeholder="Password" autocomplete="off">
+            <button id="auth-submit" class="btn btn-primary">Enter</button>
+            <p id="auth-error" class="auth-error" style="display:none">Wrong password</p>
+        </div>
+    </div>
+
+    <div class="container" id="main-app" style="display:none">
+        <header class="app-header">
+            <h1>Media Plan Generator</h1>
+            <p class="subtitle">Create and export professional media plans</p>
+        </header>
+
+        <!-- General Info Section -->
+        <section class="section" id="general-info">
+            <h2 class="section-title">General Information</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="client">Client</label>
+                    <input type="text" id="client" placeholder="Client name">
+                </div>
+                <div class="form-group">
+                    <label for="campaign">Campaign / Agency</label>
+                    <input type="text" id="campaign" value="MobX Agency" placeholder="Campaign or agency name">
+                </div>
+                <div class="form-group">
+                    <label for="period">Period</label>
+                    <input type="text" id="period" value="1 month" placeholder="e.g. 1 month">
+                </div>
+                <div class="form-group">
+                    <label for="cpa-event">CPA Event Name</label>
+                    <select id="cpa-event">
+                        <option value="">— Select event —</option>
+                        <option value="Purchases">Purchases</option>
+                        <option value="Installs">Installs</option>
+                    </select>
+                    <input type="text" id="cpa-event-custom" class="cpa-custom-input" placeholder="Enter custom event name" style="display:none;">
+                </div>
+                <div class="form-group form-group-wide">
+                    <label>App Links</label>
+                    <div class="app-links-grid">
+                        <div class="app-link-row">
+                            <span class="app-link-icon">🤖</span>
+                            <input type="url" id="app-link-android" placeholder="https://play.google.com/store/apps/details?id=...">
+                            <span class="app-link-status" id="app-link-android-status"></span>
+                        </div>
+                        <div class="app-link-row">
+                            <span class="app-link-icon">🍏</span>
+                            <input type="url" id="app-link-ios" placeholder="https://apps.apple.com/app/id...">
+                            <span class="app-link-status" id="app-link-ios-status"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="vertical">App Vertical</label>
+                    <select id="vertical">
+                        <option value="other">— Not specified —</option>
+                        <option value="finance">Finance</option>
+                        <option value="ecommerce">E-commerce / Shopping</option>
+                        <option value="pharma">Pharma / Medical</option>
+                        <option value="delivery">Delivery / Food</option>
+                        <option value="health">Health & Fitness</option>
+                        <option value="gaming">Gaming</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="utilities">Utilities / Tools</option>
+                        <option value="travel">Travel</option>
+                        <option value="education">Education</option>
+                        <option value="social">Social</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="currency">Currency</label>
+                    <select id="currency">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (&euro;)</option>
+                        <option value="RUB">RUB (&#8381;)</option>
+                        <option value="GBP">GBP (&pound;)</option>
+                        <option value="KZT">KZT (&#8376;)</option>
+                        <option value="UAH">UAH (&#8372;)</option>
+                        <option value="BRL">BRL (R$)</option>
+                        <option value="INR">INR (&#8377;)</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Source Selection -->
+        <section class="section" id="source-select">
+            <div class="section-header">
+                <h2 class="section-title">Select Sources</h2>
+                <div class="source-actions">
+                    <button class="btn btn-sm" id="select-all-btn">Select All</button>
+                    <button class="btn btn-sm btn-outline" id="clear-all-btn">Clear All</button>
+                </div>
+            </div>
+            <div class="source-groups">
+                <div class="source-group">
+                    <h3 class="source-group-title">Base</h3>
+                    <div class="source-checkboxes">
+                        <label class="source-label"><input type="checkbox" data-source="xiaomi" data-label="Xiaomi"> Xiaomi</label>
+                        <label class="source-label"><input type="checkbox" data-source="xiaomi_codev" data-label="Xiaomi CoDev"> Xiaomi CoDev</label>
+                        <label class="source-label"><input type="checkbox" data-source="huawei" data-label="Huawei"> Huawei</label>
+                        <label class="source-label"><input type="checkbox" data-source="appnext" data-label="Appnext"> Appnext</label>
+                        <label class="source-label"><input type="checkbox" data-source="xapads" data-label="Xapads"> Xapads</label>
+                        <label class="source-label"><input type="checkbox" data-source="mintegral" data-label="Mintegral"> Mintegral</label>
+                        <label class="source-label"><input type="checkbox" data-source="unity" data-label="Unity Ads"> Unity Ads</label>
+                        <label class="source-label"><input type="checkbox" data-source="moloco" data-label="Moloco"> Moloco</label>
+                        <label class="source-label"><input type="checkbox" data-source="yandex" data-label="Yandex"> Yandex</label>
+                        <label class="source-label"><input type="checkbox" data-source="vk" data-label="VK Ads"> VK Ads</label>
+                    </div>
+                </div>
+                <div class="source-group">
+                    <h3 class="source-group-title">Other</h3>
+                    <div class="source-checkboxes">
+                        <label class="source-label"><input type="checkbox" data-source="applovin" data-label="AppLovin"> AppLovin</label>
+                        <label class="source-label"><input type="checkbox" data-source="digital_turbine" data-label="Digital Turbine"> Digital Turbine</label>
+                        <label class="source-label"><input type="checkbox" data-source="facebook" data-label="Facebook"> Facebook</label>
+                        <label class="source-label"><input type="checkbox" data-source="google" data-label="Google UAC"> Google UAC</label>
+                        <label class="source-label"><input type="checkbox" data-source="ironsource" data-label="IronSource"> IronSource</label>
+                        <label class="source-label"><input type="checkbox" data-source="liftoff" data-label="Liftoff"> Liftoff</label>
+                        <label class="source-label"><input type="checkbox" data-source="oppo" data-label="Oppo"> Oppo</label>
+                        <label class="source-label"><input type="checkbox" data-source="realme" data-label="Realme"> Realme</label>
+                        <label class="source-label"><input type="checkbox" data-source="samsung" data-label="Samsung"> Samsung</label>
+                        <label class="source-label"><input type="checkbox" data-source="snapchat" data-label="Snapchat"> Snapchat</label>
+                        <label class="source-label"><input type="checkbox" data-source="tiktok" data-label="TikTok"> TikTok</label>
+                        <label class="source-label"><input type="checkbox" data-source="transsion" data-label="Transsion"> Transsion</label>
+                        <label class="source-label"><input type="checkbox" data-source="twitter" data-label="X (Twitter)"> X (Twitter)</label>
+                        <label class="source-label"><input type="checkbox" data-source="vivo" data-label="Vivo"> Vivo</label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sources Table Section -->
+        <section class="section" id="sources-section">
+            <div class="section-header">
+                <h2 class="section-title">Media Plan Sources</h2>
+                <button class="btn btn-primary" id="add-row-btn">+ Add Source</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="mediaplan-table">
+                    <thead id="mediaplan-head">
+                    </thead>
+                    <tbody id="mediaplan-body">
+                        <!-- Rows will be added dynamically -->
+                    </tbody>
+                    <tfoot id="mediaplan-foot">
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <!-- Cost Summary (always visible, VAT row only for RU) -->
+        <section class="section vat-section" id="vat-section">
+            <h2 class="section-title">Cost Summary</h2>
+            <div class="vat-grid">
+                <div class="vat-row">
+                    <span class="vat-label">Max Placement Cost Net</span>
+                    <span class="vat-value" id="vat-net">0</span>
+                </div>
+                <div class="vat-row" id="vat-row-line" style="display: none;">
+                    <span class="vat-label">VAT (20%)</span>
+                    <span class="vat-value" id="vat-amount">0</span>
+                </div>
+                <div class="vat-row vat-total">
+                    <span class="vat-label">Total Cost Gross</span>
+                    <span class="vat-value" id="vat-gross">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Export Section -->
+        <section class="section export-section">
+            <div class="export-actions">
+                <button class="btn btn-export" id="export-btn">Download Excel</button>
+                <button class="btn btn-secondary" id="reset-btn">Reset All</button>
+            </div>
+        </section>
+    </div>
+
+    <script>
+    // Password gate (SHA-256 hash comparison)
+    const PASS_HASH = '722a026b816a1d0557ff22a84e77279df1f6a715ce8bea4efa84fb48ed20cdf1';
+
+    async function sha256(str) {
+        const buf = new TextEncoder().encode(str);
+        const hash = await crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function unlockApp() {
+        document.getElementById('auth-gate').style.display = 'none';
+        document.getElementById('main-app').style.display = '';
+        sessionStorage.setItem('mp_auth', '1');
+    }
+
+    // Auto-unlock if already authenticated in this session
+    if (sessionStorage.getItem('mp_auth') === '1') {
+        document.addEventListener('DOMContentLoaded', unlockApp);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('auth-password');
+        const btn = document.getElementById('auth-submit');
+        const err = document.getElementById('auth-error');
+
+        async function tryLogin() {
+            const hash = await sha256(input.value);
+            if (hash === PASS_HASH) {
+                unlockApp();
+            } else {
+                err.style.display = '';
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        btn.addEventListener('click', tryLogin);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+        if (sessionStorage.getItem('mp_auth') !== '1') input.focus();
+    });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="logo-data.js"></script>
+    <script src="benchmarks.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
