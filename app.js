@@ -405,17 +405,16 @@ async function fetchAppCategory(url) {
 }
 
 async function fetchAppStoreCategory(appId, country) {
-    // iTunes Search API works directly from browser (supports CORS)
-    // Try: 1) given country, 2) no country (global), 3) fallback regions
+    // iTunes Search API — try direct first, then CORS proxy as fallback
     const attempts = [];
     if (country) attempts.push(country);
     attempts.push('');  // global (no country param)
     if (country !== 'us') attempts.push('us');
-    // Popular fallback regions
     for (const fb of ['mx', 'br', 'gb', 'de', 'ru', 'in', 'id', 'tr', 'sa', 'ng']) {
         if (!attempts.includes(fb)) attempts.push(fb);
     }
 
+    // Try direct requests first (fast, no proxy)
     for (const cc of attempts) {
         let apiUrl = `https://itunes.apple.com/lookup?id=${appId}`;
         if (cc) apiUrl += `&country=${cc}`;
@@ -425,14 +424,26 @@ async function fetchAppStoreCategory(appId, country) {
             const data = await resp.json();
             if (data.results && data.results.length > 0) {
                 const app = data.results[0];
-                const genre = app.primaryGenreName;
-                const appName = app.trackName || '';
-                return { vertical: mapStoreCategory(genre), appName };
+                return { vertical: mapStoreCategory(app.primaryGenreName), appName: app.trackName || '' };
             }
-        } catch (e) {
-            continue;
-        }
+        } catch (e) { continue; }
     }
+
+    // Fallback: try via CORS proxy (for GitHub Pages etc.)
+    for (const cc of attempts) {
+        let baseUrl = `https://itunes.apple.com/lookup?id=${appId}`;
+        if (cc) baseUrl += `&country=${cc}`;
+        try {
+            const resp = await fetch(GP_PROXY + encodeURIComponent(baseUrl));
+            if (!resp.ok) continue;
+            const data = await resp.json();
+            if (data.results && data.results.length > 0) {
+                const app = data.results[0];
+                return { vertical: mapStoreCategory(app.primaryGenreName), appName: app.trackName || '' };
+            }
+        } catch (e) { continue; }
+    }
+
     return { vertical: 'other', appName: '' };
 }
 
