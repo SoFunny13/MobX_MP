@@ -55,15 +55,66 @@ const VERTICAL_MULTIPLIERS = {
     other:         { ctr: 1.00, crInstall: 1.00, cpi: 1.00 }   // Neutral default
 };
 
-// ── 3. GEO tier multipliers ────────────────────────────────────────────────────
-// Tier 1: High-income markets — baseline
-// Tier 2: Mid-income — slightly higher CTR (less ad fatigue), cheaper installs
-// Tier 3: Emerging — highest CTR, cheapest installs
+// ── 3. Per-country GEO multipliers ─────────────────────────────────────────────
+// Based on AppTweak 2025, Adjust H1 2024, Mapendo 2025 data.
+// All values are relative to US (US = 1.00 baseline).
+// Sources: AppTweak Apple Ads Benchmarks 2025 (38 countries),
+//          Adjust eCPI Benchmarks H1 2024, Mapendo CPI reports 2024-2025.
 
-const GEO_TIER_MULTIPLIERS = {
-    tier1: { ctr: 1.00, crInstall: 1.00, cpi: 1.00 },  // US/EU baseline
-    tier2: { ctr: 1.10, crInstall: 0.80, cpi: 0.45 },  // RU/BR/IN — cheaper installs
-    tier3: { ctr: 1.15, crInstall: 0.60, cpi: 0.20 }   // Emerging — cheapest installs
+const COUNTRY_GEO_MULTIPLIERS = {
+    US: { ctr: 1.00, crInstall: 1.00, cpi: 1.00 },  // baseline
+    GB: { ctr: 1.09, crInstall: 1.04, cpi: 0.64 },
+    JP: { ctr: 0.97, crInstall: 0.84, cpi: 0.63 },
+    CA: { ctr: 1.15, crInstall: 1.02, cpi: 0.55 },
+    AU: { ctr: 1.18, crInstall: 1.02, cpi: 0.54 },
+    DE: { ctr: 1.30, crInstall: 1.00, cpi: 0.53 },
+    KR: { ctr: 0.95, crInstall: 0.93, cpi: 0.45 },
+    FR: { ctr: 1.12, crInstall: 1.04, cpi: 0.44 },
+    NL: { ctr: 1.15, crInstall: 1.04, cpi: 0.37 },
+    BE: { ctr: 1.09, crInstall: 1.05, cpi: 0.36 },
+    SE: { ctr: 1.17, crInstall: 1.02, cpi: 0.36 },
+    ES: { ctr: 1.09, crInstall: 1.00, cpi: 0.35 },
+    IE: { ctr: 1.26, crInstall: 1.11, cpi: 0.35 },
+    AE: { ctr: 1.17, crInstall: 1.09, cpi: 0.34 },
+    NO: { ctr: 1.15, crInstall: 1.05, cpi: 0.34 },
+    DK: { ctr: 1.27, crInstall: 1.05, cpi: 0.33 },
+    SG: { ctr: 1.05, crInstall: 0.96, cpi: 0.33 },
+    AT: { ctr: 1.52, crInstall: 1.07, cpi: 0.33 },
+    IT: { ctr: 1.23, crInstall: 1.02, cpi: 0.33 },
+    NZ: { ctr: 1.27, crInstall: 1.09, cpi: 0.32 },
+    SA: { ctr: 0.83, crInstall: 0.98, cpi: 0.32 },
+    FI: { ctr: 1.27, crInstall: 1.04, cpi: 0.31 },
+    PL: { ctr: 1.00, crInstall: 1.05, cpi: 0.28 },
+    MX: { ctr: 1.20, crInstall: 0.98, cpi: 0.27 },
+    TH: { ctr: 1.00, crInstall: 0.87, cpi: 0.27 },
+    BR: { ctr: 1.39, crInstall: 0.98, cpi: 0.26 },
+    RO: { ctr: 1.45, crInstall: 1.13, cpi: 0.26 },
+    TR: { ctr: 1.39, crInstall: 0.87, cpi: 0.25 },
+    ZA: { ctr: 1.48, crInstall: 1.07, cpi: 0.25 },
+    PT: { ctr: 1.32, crInstall: 1.07, cpi: 0.25 },
+    ID: { ctr: 0.94, crInstall: 0.84, cpi: 0.23 },
+    AR: { ctr: 1.05, crInstall: 0.98, cpi: 0.23 },
+    CL: { ctr: 1.24, crInstall: 1.07, cpi: 0.22 },
+    IN: { ctr: 0.79, crInstall: 0.87, cpi: 0.22 },
+    VN: { ctr: 0.85, crInstall: 0.89, cpi: 0.21 },
+    CO: { ctr: 1.20, crInstall: 1.04, cpi: 0.20 },
+    MY: { ctr: 1.11, crInstall: 0.98, cpi: 0.19 },
+    PH: { ctr: 1.18, crInstall: 0.98, cpi: 0.18 },
+};
+
+// ── 3b. Regional fallback multipliers (for countries not in COUNTRY_GEO_MULTIPLIERS)
+// Based on Adjust eCPI H1 2024 regional data, normalized to US baseline.
+
+const REGION_FALLBACK_MULTIPLIERS = {
+    north_america:  { ctr: 1.10, crInstall: 1.00, cpi: 0.52 },
+    western_europe: { ctr: 1.20, crInstall: 1.03, cpi: 0.35 },
+    eastern_europe: { ctr: 1.30, crInstall: 1.05, cpi: 0.27 },
+    apac_developed: { ctr: 1.00, crInstall: 0.90, cpi: 0.35 },
+    apac_emerging:  { ctr: 1.00, crInstall: 0.88, cpi: 0.22 },
+    latam:          { ctr: 1.20, crInstall: 1.00, cpi: 0.24 },
+    mena:           { ctr: 0.90, crInstall: 1.00, cpi: 0.30 },
+    africa:         { ctr: 1.40, crInstall: 1.00, cpi: 0.20 },
+    rest:           { ctr: 1.10, crInstall: 0.95, cpi: 0.20 },
 };
 
 // ── 4. Platform multipliers (Android vs iOS) ─────────────────────────────────
@@ -76,28 +127,61 @@ const PLATFORM_MULTIPLIERS = {
     iOS:     { ctr: 1.25, crInstall: 0.85, cpi: 2.50 }   // iOS: +25% CTR, −15% CR, 2.5× CPI
 };
 
-// ── 5. Country → Tier mapping ──────────────────────────────────────────────────
-// ~65 countries explicitly mapped; rest default to tier3
+// ── 5. Country → Region mapping (fallback for countries not in COUNTRY_GEO_MULTIPLIERS)
+// Used only when a country has no direct entry in COUNTRY_GEO_MULTIPLIERS.
 
-const COUNTRY_TO_TIER = {
-    // Tier 1 — High-income
-    US: 'tier1', GB: 'tier1', DE: 'tier1', FR: 'tier1', JP: 'tier1',
-    KR: 'tier1', AU: 'tier1', CA: 'tier1', IT: 'tier1', ES: 'tier1',
-    NL: 'tier1', CH: 'tier1', SE: 'tier1', NO: 'tier1', DK: 'tier1',
-    FI: 'tier1', AT: 'tier1', BE: 'tier1', IE: 'tier1', SG: 'tier1',
-    HK: 'tier1', NZ: 'tier1', IL: 'tier1', AE: 'tier1', SA: 'tier1',
-    QA: 'tier1', KW: 'tier1', TW: 'tier1', LU: 'tier1', PT: 'tier1',
+const COUNTRY_TO_REGION = {
+    // North America
+    US: 'north_america', CA: 'north_america',
 
-    // Tier 2 — Mid-income / large markets
-    RU: 'tier2', BR: 'tier2', MX: 'tier2', IN: 'tier2', ID: 'tier2',
-    TH: 'tier2', TR: 'tier2', PL: 'tier2', CZ: 'tier2', RO: 'tier2',
-    HU: 'tier2', GR: 'tier2', AR: 'tier2', CL: 'tier2', CO: 'tier2',
-    PE: 'tier2', MY: 'tier2', PH: 'tier2', VN: 'tier2', ZA: 'tier2',
-    EG: 'tier2', MA: 'tier2', CN: 'tier2', HR: 'tier2', BG: 'tier2',
-    RS: 'tier2', SK: 'tier2', SI: 'tier2', LT: 'tier2', LV: 'tier2',
-    EE: 'tier2', BY: 'tier2', GE: 'tier2', AZ: 'tier2',
+    // Western Europe
+    GB: 'western_europe', DE: 'western_europe', FR: 'western_europe',
+    IT: 'western_europe', ES: 'western_europe', NL: 'western_europe',
+    BE: 'western_europe', AT: 'western_europe', CH: 'western_europe',
+    SE: 'western_europe', NO: 'western_europe', DK: 'western_europe',
+    FI: 'western_europe', IE: 'western_europe', PT: 'western_europe',
+    LU: 'western_europe', IS: 'western_europe', MT: 'western_europe',
+    CY: 'western_europe',
 
-    // Everything else → tier3 (handled by getGeoTier fallback)
+    // Eastern Europe
+    PL: 'eastern_europe', CZ: 'eastern_europe', RO: 'eastern_europe',
+    HU: 'eastern_europe', GR: 'eastern_europe', HR: 'eastern_europe',
+    BG: 'eastern_europe', RS: 'eastern_europe', SK: 'eastern_europe',
+    SI: 'eastern_europe', LT: 'eastern_europe', LV: 'eastern_europe',
+    EE: 'eastern_europe', BY: 'eastern_europe', UA: 'eastern_europe',
+    MD: 'eastern_europe', BA: 'eastern_europe', MK: 'eastern_europe',
+    ME: 'eastern_europe', AL: 'eastern_europe', GE: 'eastern_europe',
+    AM: 'eastern_europe', AZ: 'eastern_europe', RU: 'eastern_europe',
+
+    // APAC — Developed
+    JP: 'apac_developed', KR: 'apac_developed', AU: 'apac_developed',
+    NZ: 'apac_developed', SG: 'apac_developed', HK: 'apac_developed',
+    TW: 'apac_developed',
+
+    // APAC — Emerging
+    IN: 'apac_emerging', ID: 'apac_emerging', TH: 'apac_emerging',
+    VN: 'apac_emerging', PH: 'apac_emerging', MY: 'apac_emerging',
+    CN: 'apac_emerging', BD: 'apac_emerging', PK: 'apac_emerging',
+    MM: 'apac_emerging', KH: 'apac_emerging', LA: 'apac_emerging',
+    NP: 'apac_emerging', LK: 'apac_emerging', MN: 'apac_emerging',
+
+    // LATAM
+    BR: 'latam', MX: 'latam', AR: 'latam', CL: 'latam', CO: 'latam',
+    PE: 'latam', EC: 'latam', VE: 'latam', UY: 'latam', PY: 'latam',
+    BO: 'latam', CR: 'latam', PA: 'latam', DO: 'latam', GT: 'latam',
+    HN: 'latam', SV: 'latam', NI: 'latam', CU: 'latam', JM: 'latam',
+    TT: 'latam',
+
+    // MENA
+    AE: 'mena', SA: 'mena', QA: 'mena', KW: 'mena', BH: 'mena',
+    OM: 'mena', IL: 'mena', TR: 'mena', EG: 'mena', MA: 'mena',
+    TN: 'mena', DZ: 'mena', IQ: 'mena', JO: 'mena', LB: 'mena',
+    LY: 'mena', SY: 'mena', YE: 'mena', IR: 'mena',
+
+    // Africa
+    ZA: 'africa', NG: 'africa', KE: 'africa', GH: 'africa',
+    TZ: 'africa', UG: 'africa', ET: 'africa', RW: 'africa',
+    SN: 'africa', CM: 'africa', CI: 'africa', MZ: 'africa',
 };
 
 // ── 6. GEO text aliases ────────────────────────────────────────────────────────
@@ -426,13 +510,20 @@ function normalizeGeoCode(raw) {
 }
 
 /**
- * Get the GEO tier for a country code. Unknown countries → tier3.
- * Empty GEO → tier1 (neutral, no penalty).
+ * Get GEO multipliers for a country code.
+ * 1. Direct match in COUNTRY_GEO_MULTIPLIERS (38 countries with real data)
+ * 2. Fallback to region via COUNTRY_TO_REGION → REGION_FALLBACK_MULTIPLIERS
+ * 3. Ultimate fallback: 'rest' region
+ * Empty GEO → US baseline (neutral, no penalty).
  */
-function getGeoTier(geoCode) {
-    if (!geoCode) return 'tier1'; // empty = neutral
+function getGeoMultipliers(geoCode) {
+    if (!geoCode) return { ctr: 1.00, crInstall: 1.00, cpi: 1.00 }; // empty = neutral (US baseline)
     const code = geoCode.trim().toUpperCase();
-    return COUNTRY_TO_TIER[code] || 'tier3';
+    // Direct country match
+    if (COUNTRY_GEO_MULTIPLIERS[code]) return COUNTRY_GEO_MULTIPLIERS[code];
+    // Regional fallback
+    const region = COUNTRY_TO_REGION[code] || 'rest';
+    return REGION_FALLBACK_MULTIPLIERS[region] || REGION_FALLBACK_MULTIPLIERS.rest;
 }
 
 /**

@@ -18,8 +18,9 @@ const CURRENCY_RATES = {
 };
 
 // Benchmark data is now in benchmarks.js:
-// CHANNEL_BENCHMARKS, VERTICAL_MULTIPLIERS, GEO_TIER_MULTIPLIERS,
-// PLATFORM_MULTIPLIERS, COUNTRY_TO_TIER, GEO_ALIASES, STORE_TO_VERTICAL
+// CHANNEL_BENCHMARKS, VERTICAL_MULTIPLIERS, COUNTRY_GEO_MULTIPLIERS,
+// REGION_FALLBACK_MULTIPLIERS, COUNTRY_TO_REGION, PLATFORM_MULTIPLIERS,
+// GEO_ALIASES, STORE_TO_VERTICAL, getGeoMultipliers
 
 // CORS proxy for Google Play (iTunes API works directly without proxy)
 const GP_PROXY = 'https://api.codetabs.com/v1/proxy/?quest=';
@@ -28,6 +29,7 @@ const GP_PROXY = 'https://api.codetabs.com/v1/proxy/?quest=';
 
 let rowCounter = 0;
 let currentCurrency = 'USD'; // tracks last selected currency for conversion
+let selectedGeos = []; // selected GEO codes for multi-GEO row creation
 
 // ── DOM refs ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,9 @@ const appLinkIos = document.getElementById('app-link-ios');
 const appLinkAndroidStatus = document.getElementById('app-link-android-status');
 const appLinkIosStatus = document.getElementById('app-link-ios-status');
 const verticalSelect = document.getElementById('vertical');
+const geoTagsContainer = document.getElementById('geo-tags');
+const geoAddInput = document.getElementById('geo-add-input');
+const geoAddDatalist = document.getElementById('geo-add-options');
 
 function getMode() {
     return cpaEventSelect.value === 'Installs' ? 'installs' : 'purchases';
@@ -63,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     appLinkIos.addEventListener('blur', () => onAppLinkBlur(appLinkIos, appLinkIosStatus));
     renderTableStructure();
     initGeoDatalist();
+    initGeoMultiSelect();
     initSourceCheckboxes();
 });
 
@@ -77,6 +83,110 @@ function initGeoDatalist() {
         dl.appendChild(opt);
     });
     document.body.appendChild(dl);
+}
+
+// ── GEO Multi-Select ─────────────────────────────────────────────────────────
+
+function initGeoMultiSelect() {
+    // Populate datalist for the add-input
+    COUNTRIES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = `${c.name} (${c.code})`;
+        geoAddDatalist.appendChild(opt);
+    });
+
+    // When user selects a country from datalist
+    geoAddInput.addEventListener('change', () => {
+        const val = geoAddInput.value.trim();
+        if (!val) return;
+        const code = extractGeoCode(val);
+        if (!code) return;
+        geoAddInput.value = '';
+        if (selectedGeos.includes(code)) return; // already selected
+        addGeoTag(code);
+    });
+
+    // Also handle Enter key
+    geoAddInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            geoAddInput.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // Click on container focuses input
+    geoAddInput.closest('.geo-select-wrap').addEventListener('click', () => geoAddInput.focus());
+}
+
+function getCountryName(code) {
+    const c = COUNTRIES.find(c => c.code === code);
+    return c ? c.name : code;
+}
+
+function addGeoTag(code) {
+    selectedGeos.push(code);
+    renderGeoTags();
+    // Add rows for this GEO for all checked sources
+    addRowsForGeo(code);
+}
+
+function removeGeoTag(code) {
+    selectedGeos = selectedGeos.filter(c => c !== code);
+    renderGeoTags();
+    // Remove rows with this GEO for all sources
+    removeRowsForGeo(code);
+}
+
+function renderGeoTags() {
+    geoTagsContainer.innerHTML = '';
+    selectedGeos.forEach(code => {
+        const tag = document.createElement('span');
+        tag.className = 'geo-tag';
+        tag.innerHTML = `${code} <button class="geo-tag-remove" title="Remove">&times;</button>`;
+        tag.querySelector('.geo-tag-remove').addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeGeoTag(code);
+        });
+        geoTagsContainer.appendChild(tag);
+    });
+}
+
+/** Add rows for a newly added GEO — for all currently checked sources */
+function addRowsForGeo(geoCode) {
+    const geoDisplay = getCountryName(geoCode) + ' (' + geoCode + ')';
+    const checkedSources = document.querySelectorAll('#source-select input[type="checkbox"]:checked');
+    checkedSources.forEach(cb => {
+        const sourceKey = cb.dataset.source;
+        const label = cb.dataset.label;
+        const platforms = getActivePlatforms(sourceKey);
+        platforms.forEach(platform => {
+            // Check if this exact combo already exists
+            if (findRow(sourceKey, platform, geoCode)) return;
+            createSourceRow(sourceKey, label, platform, geoDisplay);
+        });
+    });
+}
+
+/** Remove rows for a removed GEO — for all sources */
+function removeRowsForGeo(geoCode) {
+    tbody.querySelectorAll('tr').forEach(tr => {
+        if (tr.dataset.geo === geoCode) {
+            const sourceKey = tr.dataset.sourceKey;
+            tr.remove();
+            // If no rows left for this source, uncheck
+            if (sourceKey && !tbody.querySelector(`tr[data-source-key="${sourceKey}"]`)) {
+                const cb = document.querySelector(`#source-select input[data-source="${sourceKey}"]`);
+                if (cb) cb.checked = false;
+            }
+        }
+    });
+    recalcTotals();
+    updateVatVisibility();
+}
+
+/** Find a row by source + platform + geo combo */
+function findRow(sourceKey, platform, geoCode) {
+    return tbody.querySelector(`tr[data-source-key="${sourceKey}"][data-platform="${platform}"][data-geo="${geoCode}"]`);
 }
 
 // ── CPA Event Dropdown ────────────────────────────────────────────────────────
@@ -243,21 +353,37 @@ function getActivePlatforms(sourceKey) {
 }
 
 function addSourceRow(sourceKey, label) {
-    // Don't add duplicate
-    if (tbody.querySelector(`tr[data-source-key="${sourceKey}"]`)) return;
-
     const platforms = getActivePlatforms(sourceKey);
-    platforms.forEach(platform => {
-        createSourceRow(sourceKey, label, platform);
-    });
+
+    if (selectedGeos.length > 0) {
+        // Multi-GEO: create rows for each GEO × platform
+        selectedGeos.forEach(geoCode => {
+            const geoDisplay = getCountryName(geoCode) + ' (' + geoCode + ')';
+            platforms.forEach(platform => {
+                // Skip only exact duplicates (same source + platform + geo)
+                if (findRow(sourceKey, platform, geoCode)) return;
+                createSourceRow(sourceKey, label, platform, geoDisplay);
+            });
+        });
+    } else {
+        // No GEOs selected: one row per platform, user fills GEO manually
+        platforms.forEach(platform => {
+            if (findRow(sourceKey, platform, '')) return;
+            createSourceRow(sourceKey, label, platform);
+        });
+    }
 }
 
-function createSourceRow(sourceKey, label, platform) {
+function createSourceRow(sourceKey, label, platform, geo) {
     rowCounter++;
     const id = rowCounter;
     const tr = document.createElement('tr');
     tr.dataset.rowId = id;
     tr.dataset.sourceKey = sourceKey;
+    tr.dataset.platform = platform;
+    // Track GEO code in data attribute for multi-GEO management
+    const geoCode = geo ? extractGeoCode(geo) : '';
+    tr.dataset.geo = geoCode;
     const mode = getMode();
 
     const baseCols = `
@@ -305,6 +431,7 @@ function createSourceRow(sourceKey, label, platform) {
     tr.querySelectorAll('input[data-field="budget"], input[data-field="cpa"], input[data-field="cpi"], input[data-field="crPurchase"], input[data-field="crInstall"], input[data-field="ctr"]').forEach(wireNumericFormat);
 
     const geoInput = tr.querySelector('[data-field="geo"]');
+    if (geo) geoInput.value = geo;
     geoInput.addEventListener('change', updateVatVisibility);
     geoInput.addEventListener('blur', () => { updateVatVisibility(); applyBenchmarks(tr); });
 
@@ -587,10 +714,9 @@ function applyBenchmarks(tr) {
     // 2. Get vertical multiplier
     const vertMult = VERTICAL_MULTIPLIERS[vertical] || VERTICAL_MULTIPLIERS.other;
 
-    // 3. Get GEO multiplier
+    // 3. Get GEO multiplier (per-country or regional fallback)
     const geoCode = extractGeoCode(geoRaw);
-    const tier = getGeoTier(geoCode);
-    const geoMult = GEO_TIER_MULTIPLIERS[tier];
+    const geoMult = getGeoMultipliers(geoCode);
 
     // 4. Get platform multiplier
     const platMult = PLATFORM_MULTIPLIERS[platform] || PLATFORM_MULTIPLIERS.Android;
@@ -690,7 +816,7 @@ function recalcRow(tr) {
         const crPurchasePct = numField(tr, 'crPurchase');
         const crPurchase = crPurchasePct / 100;
         const purchases = installs * crPurchase;
-        setCalc(tr, 'purchases', purchases);
+        setCalc(tr, 'purchases', Math.round(purchases));
 
         // cpp = budget / purchases
         const cpp = (purchases > 0) ? budget / purchases : 0;
@@ -721,7 +847,7 @@ function recalcRow(tr) {
 
         const cpa = numField(tr, 'cpa');
         const events = (cpa > 0) ? budget / cpa : 0;
-        setCalc(tr, 'events', events);
+        setCalc(tr, 'events', Math.round(events));
     }
 
     recalcTotals();
@@ -746,8 +872,7 @@ function getInternalCrInstall(tr) {
     }
     const vertMult = VERTICAL_MULTIPLIERS[vertical] || VERTICAL_MULTIPLIERS.other;
     const geoCode = extractGeoCode(geoRaw);
-    const tier = getGeoTier(geoCode);
-    const geoMult = GEO_TIER_MULTIPLIERS[tier];
+    const geoMult = getGeoMultipliers(geoCode);
     const platMult = PLATFORM_MULTIPLIERS[platform] || PLATFORM_MULTIPLIERS.Android;
 
     const crPct = roundBenchmark(base.crInstall * vertMult.crInstall * geoMult.crInstall * platMult.crInstall);
@@ -783,14 +908,14 @@ function recalcTotals() {
             totalPurchases += numField(tr, 'purchases');
         });
         const purchasesEl = document.getElementById('total-purchases');
-        if (purchasesEl) purchasesEl.textContent = fmtNum(totalPurchases);
+        if (purchasesEl) purchasesEl.textContent = fmtNum(Math.round(totalPurchases));
     } else {
         let totalEvents = 0;
         tbody.querySelectorAll('tr').forEach(tr => {
             totalEvents += numField(tr, 'events');
         });
         const eventsEl = document.getElementById('total-events');
-        if (eventsEl) eventsEl.textContent = fmtNum(totalEvents);
+        if (eventsEl) eventsEl.textContent = fmtNum(Math.round(totalEvents));
     }
 
     // Cost summary
@@ -925,6 +1050,10 @@ function resetAll() {
     appLinkAndroidStatus.className = 'app-link-status';
     appLinkIosStatus.textContent = '';
     appLinkIosStatus.className = 'app-link-status';
+    // Clear GEO multi-select
+    selectedGeos = [];
+    renderGeoTags();
+    geoAddInput.value = '';
     // Uncheck all source checkboxes
     document.querySelectorAll('#source-select input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
