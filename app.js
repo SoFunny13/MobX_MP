@@ -50,9 +50,14 @@ const verticalSelect = document.getElementById('vertical');
 const geoTagsContainer = document.getElementById('geo-tags');
 const geoAddInput = document.getElementById('geo-add-input');
 const geoAddDatalist = document.getElementById('geo-add-options');
+const trafficTypeSelect = document.getElementById('traffic-type');
 
 function getMode() {
     return cpaEventSelect.value === 'Installs' ? 'installs' : 'purchases';
+}
+
+function getTrafficType() {
+    return trafficTypeSelect.value; // 'app' | 'web'
 }
 
 // ── Initialization ─────────────────────────────────────────────────────────────
@@ -62,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     exportBtn.addEventListener('click', exportToExcel);
     resetBtn.addEventListener('click', resetAll);
     cpaEventSelect.addEventListener('change', onCpaEventChange);
+    trafficTypeSelect.addEventListener('change', onTrafficTypeChange);
     currencySelect.addEventListener('change', onCurrencyChange);
     verticalSelect.addEventListener('change', reapplyAllBenchmarks);
     appLinkAndroid.addEventListener('blur', () => onAppLinkBlur(appLinkAndroid, appLinkAndroidStatus));
@@ -210,9 +216,38 @@ function onCpaEventChange() {
     updateVatVisibility();
 }
 
+function onTrafficTypeChange() {
+    tbody.innerHTML = '';
+    rowCounter = 0;
+    filterSourcesByTraffic();
+    renderTableStructure();
+    recalcTotals();
+    updateVatVisibility();
+}
+
 // ── Dynamic Table Structure ──────────────────────────────────────────────────
 
 function renderTableStructure() {
+    if (getTrafficType() === 'web') {
+        thead.innerHTML = `<tr class="header-row">
+            <th class="col-channel">Channel</th>
+            <th class="col-platform">Platform</th>
+            <th class="col-geo">GEO</th>
+            <th class="col-period">Period</th>
+            <th class="col-purchases">Total Purchases</th>
+            <th class="col-cpp">Cost per purchase</th>
+            <th class="col-budget">Total Budget</th>
+            <th class="col-actions"></th>
+        </tr>`;
+        tfoot.innerHTML = `<tr class="total-row" id="total-row">
+            <td colspan="4" class="total-label">Total</td>
+            <td id="total-purchases">0</td>
+            <td>—</td>
+            <td id="total-cost">0</td>
+            <td></td>
+        </tr>`;
+        return;
+    }
     const mode = getMode();
     if (mode === 'installs') {
         thead.innerHTML = `<tr class="header-row">
@@ -300,8 +335,8 @@ function initSourceCheckboxes() {
     });
 
     document.getElementById('select-all-btn').addEventListener('click', () => {
-        checkboxes.forEach(cb => {
-            if (!cb.checked) {
+        document.querySelectorAll('#source-select input[type="checkbox"]').forEach(cb => {
+            if (!cb.checked && cb.closest('.source-label').style.display !== 'none') {
                 cb.checked = true;
                 addSourceRow(cb.dataset.source, cb.dataset.label);
             }
@@ -309,12 +344,30 @@ function initSourceCheckboxes() {
     });
 
     document.getElementById('clear-all-btn').addEventListener('click', () => {
-        checkboxes.forEach(cb => {
-            if (cb.checked) {
+        document.querySelectorAll('#source-select input[type="checkbox"]').forEach(cb => {
+            if (cb.checked && cb.closest('.source-label').style.display !== 'none') {
                 cb.checked = false;
                 removeSourceRow(cb.dataset.source);
             }
         });
+    });
+
+    filterSourcesByTraffic();
+}
+
+function filterSourcesByTraffic() {
+    const type = getTrafficType();
+    document.querySelectorAll('#source-select .source-label').forEach(label => {
+        const traffic = label.dataset.traffic || 'app';
+        const visible = traffic === type;
+        label.style.display = visible ? '' : 'none';
+        if (!visible) {
+            const cb = label.querySelector('input[type="checkbox"]');
+            if (cb && cb.checked) {
+                cb.checked = false;
+                removeSourceRow(cb.dataset.source);
+            }
+        }
     });
 }
 
@@ -392,7 +445,21 @@ function createSourceRow(sourceKey, label, platform, geo) {
         <td><input type="text" data-field="geo" list="geo-options" placeholder="Select country" autocomplete="off"></td>
         <td><input type="text" data-field="period" value="1 month" style="width:80px"></td>`;
 
-    if (mode === 'installs') {
+    if (getTrafficType() === 'web') {
+        tr.innerHTML = baseCols + `
+        <td><input type="text" inputmode="decimal" data-field="purchases" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpp" placeholder="Cost per purchase"></td>
+        <td><input type="text" inputmode="decimal" data-field="budget" placeholder="Budget"></td>
+        <td><button class="btn-delete" title="Remove row">&times;</button></td>`;
+        const channelInput = tr.querySelector('[data-field="channel"]');
+        channelInput.removeAttribute('readonly');
+        channelInput.style.cursor = '';
+        channelInput.style.fontWeight = '';
+        const platformInput = tr.querySelector('[data-field="platform"]');
+        platformInput.value = 'Web';
+        platformInput.removeAttribute('readonly');
+        platformInput.style.cursor = '';
+    } else if (mode === 'installs') {
         tr.innerHTML = baseCols + `
         <td><input type="text" inputmode="decimal" data-field="installs" class="calculated" readonly tabindex="-1"></td>
         <td><input type="text" inputmode="decimal" data-field="cpi" placeholder="CPI" class="editable-calc"></td>
@@ -428,7 +495,7 @@ function createSourceRow(sourceKey, label, platform, geo) {
         inp.addEventListener('input', () => recalcRow(tr));
     });
     // Format editable numeric fields with spaces
-    tr.querySelectorAll('input[data-field="budget"], input[data-field="cpa"], input[data-field="cpi"], input[data-field="crPurchase"], input[data-field="crInstall"], input[data-field="ctr"]').forEach(wireNumericFormat);
+    tr.querySelectorAll('input[data-field="budget"], input[data-field="cpa"], input[data-field="cpi"], input[data-field="purchases"], input[data-field="cpp"], input[data-field="crPurchase"], input[data-field="crInstall"], input[data-field="ctr"]').forEach(wireNumericFormat);
 
     const geoInput = tr.querySelector('[data-field="geo"]');
     if (geo) geoInput.value = geo;
@@ -438,12 +505,12 @@ function createSourceRow(sourceKey, label, platform, geo) {
     // Track manual edits on benchmark fields
     const ctrInput = tr.querySelector('[data-field="ctr"]');
     const cpiInput = tr.querySelector('[data-field="cpi"]');
-    ctrInput.addEventListener('input', () => { delete ctrInput.dataset.auto; });
-    cpiInput.addEventListener('input', () => { delete cpiInput.dataset.auto; });
+    if (ctrInput) ctrInput.addEventListener('input', () => { delete ctrInput.dataset.auto; });
+    if (cpiInput) cpiInput.addEventListener('input', () => { delete cpiInput.dataset.auto; });
 
     if (mode === 'purchases') {
         const crInstallInput = tr.querySelector('[data-field="crInstall"]');
-        crInstallInput.addEventListener('input', () => { delete crInstallInput.dataset.auto; });
+        if (crInstallInput) crInstallInput.addEventListener('input', () => { delete crInstallInput.dataset.auto; });
     }
 
     tr.querySelector('.btn-delete').addEventListener('click', () => {
@@ -618,7 +685,13 @@ function addRow() {
         <td><input type="text" data-field="geo" list="geo-options" placeholder="Select country" autocomplete="off"></td>
         <td><input type="text" data-field="period" value="1 month" style="width:80px"></td>`;
 
-    if (mode === 'installs') {
+    if (getTrafficType() === 'web') {
+        tr.innerHTML = baseCols + `
+        <td><input type="text" inputmode="decimal" data-field="purchases" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpp" placeholder="Cost per purchase"></td>
+        <td><input type="text" inputmode="decimal" data-field="budget" placeholder="Budget"></td>
+        <td><button class="btn-delete" title="Remove row">&times;</button></td>`;
+    } else if (mode === 'installs') {
         tr.innerHTML = baseCols + `
         <td><input type="text" inputmode="decimal" data-field="installs" class="calculated" readonly tabindex="-1"></td>
         <td><input type="text" inputmode="decimal" data-field="cpi" placeholder="CPI" class="editable-calc"></td>
@@ -657,7 +730,7 @@ function addRow() {
         inp.addEventListener('input', () => recalcRow(tr));
     });
     // Format editable numeric fields with spaces
-    tr.querySelectorAll('input[data-field="budget"], input[data-field="cpa"], input[data-field="cpi"], input[data-field="crPurchase"], input[data-field="crInstall"], input[data-field="ctr"]').forEach(wireNumericFormat);
+    tr.querySelectorAll('input[data-field="budget"], input[data-field="cpa"], input[data-field="cpi"], input[data-field="purchases"], input[data-field="cpp"], input[data-field="crPurchase"], input[data-field="crInstall"], input[data-field="ctr"]').forEach(wireNumericFormat);
 
     const geoInput = tr.querySelector('[data-field="geo"]');
     geoInput.addEventListener('change', updateVatVisibility);
@@ -665,12 +738,12 @@ function addRow() {
 
     const ctrInput = tr.querySelector('[data-field="ctr"]');
     const cpiInput = tr.querySelector('[data-field="cpi"]');
-    ctrInput.addEventListener('input', () => { delete ctrInput.dataset.auto; });
-    cpiInput.addEventListener('input', () => { delete cpiInput.dataset.auto; });
+    if (ctrInput) ctrInput.addEventListener('input', () => { delete ctrInput.dataset.auto; });
+    if (cpiInput) cpiInput.addEventListener('input', () => { delete cpiInput.dataset.auto; });
 
     if (mode === 'purchases') {
         const crInstallInput = tr.querySelector('[data-field="crInstall"]');
-        crInstallInput.addEventListener('input', () => { delete crInstallInput.dataset.auto; });
+        if (crInstallInput) crInstallInput.addEventListener('input', () => { delete crInstallInput.dataset.auto; });
     }
 
     tr.querySelector('.btn-delete').addEventListener('click', () => {
@@ -781,6 +854,15 @@ function setDash(tr, name) {
 }
 
 function recalcRow(tr) {
+    if (getTrafficType() === 'web') {
+        const budget = numField(tr, 'budget');
+        const cpp = numField(tr, 'cpp');
+        const purchases = (cpp > 0) ? Math.round(budget / cpp) : 0;
+        setCalc(tr, 'purchases', purchases);
+        recalcTotals();
+        return;
+    }
+
     const mode = getMode();
     const budget = numField(tr, 'budget');
     const cpi = numField(tr, 'cpi');
@@ -902,7 +984,7 @@ function recalcTotals() {
     if (clicksEl) clicksEl.textContent = fmtNum(totalClicks);
     if (viewsEl) viewsEl.textContent = fmtNum(totalViews);
 
-    if (mode === 'installs') {
+    if (getTrafficType() === 'web' || mode === 'installs') {
         let totalPurchases = 0;
         tbody.querySelectorAll('tr').forEach(tr => {
             totalPurchases += numField(tr, 'purchases');
@@ -1100,7 +1182,10 @@ function exportToExcel() {
         if (!noViews && numField(tr, 'views') > 0) {
             base.cpm = (numField(tr, 'budget') / numField(tr, 'views')) * 1000;
         }
-        if (mode === 'installs') {
+        if (getTrafficType() === 'web') {
+            base.purchases = numField(tr, 'purchases');
+            base.cpp = numField(tr, 'cpp');
+        } else if (mode === 'installs') {
             base.crPurchase = numField(tr, 'crPurchase') / 100;
             base.purchases = numField(tr, 'purchases');
             base.cpp = numField(tr, 'cpp');
@@ -1152,7 +1237,7 @@ function exportToExcel() {
 
     const sHeader = {
         font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '2E75B5' } },
+        fill: { fgColor: { rgb: '4285F4' } },
         alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
         border: border
     };
@@ -1201,14 +1286,14 @@ function exportToExcel() {
 
     const sTotal = {
         font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '2E75B5' } },
+        fill: { fgColor: { rgb: '4285F4' } },
         alignment: { horizontal: 'center' },
         border: border
     };
 
     const sTotalNum = {
         font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '2E75B5' } },
+        fill: { fgColor: { rgb: '4285F4' } },
         alignment: { horizontal: 'center' },
         border: border,
         numFmt: '#,##0'
@@ -1216,7 +1301,7 @@ function exportToExcel() {
 
     const sTotalCur = {
         font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '2E75B5' } },
+        fill: { fgColor: { rgb: '4285F4' } },
         alignment: { horizontal: 'center' },
         border: border,
         numFmt: curFmt
@@ -1284,7 +1369,13 @@ function exportToExcel() {
 
     // Row 10: Headers
     let headerTexts, COLS;
-    if (mode === 'installs') {
+    if (getTrafficType() === 'web') {
+        COLS = 9;
+        headerTexts = [
+            'Channel', 'Platform', 'Targeting', 'Period', '',
+            'Total Purchases', 'Cost per Purchase', '', 'Total Budget'
+        ];
+    } else if (mode === 'installs') {
         COLS = 19;
         headerTexts = [
             'Channel', 'Platform', 'Targeting', 'Period', '',
@@ -1307,8 +1398,8 @@ function exportToExcel() {
         put(10, c, sc(headerTexts[c] || '', (c === 4 || c === 10) ? sSep : sHeader));
     }
 
-    // Row 12+: Data rows (with Excel formulas)
-    const dataStartRow = 12;
+    // Row 11+: Data rows (with Excel formulas)
+    const dataStartRow = 11;
     const firstR = dataStartRow + 1; // Excel 1-indexed first data row
     rows.forEach((r, i) => {
         const row = dataStartRow + i;
@@ -1320,7 +1411,13 @@ function exportToExcel() {
         put(row, 3,  sc(r.period, sData));
         put(row, 4,  empty(sSep));
 
-        if (mode === 'installs') {
+        if (getTrafficType() === 'web') {
+            // F=Total Purchases (formula), G=CPP (input), I=Budget (input)
+            put(row, 5, fc(`ROUND(I${R}/G${R},0)`, sNumber));   // F: purchases
+            put(row, 6, nc(r.cpp, sCurrencyDec));               // G: CPP (input)
+            put(row, 7, empty(sSep));
+            put(row, 8, nc(r.budget, sCurrency));               // I: Budget (input)
+        } else if (mode === 'installs') {
             // Input: G=CPI, J=Budget, N=CTR, Q=CR purchase
             // Formulas: F=installs, L=views, M=cpm, O=clicks, P=cpc, R=purchases, S=cpp
             put(row, 5,  fc(`J${R}/G${R}`, sNumber));             // F: installs = budget/cpi
@@ -1381,18 +1478,26 @@ function exportToExcel() {
     for (let c = 1; c < COLS; c++) put(totR, c, empty((c === 4 || c === 10) ? sSep : sTotal));
 
     // SUM formulas for totals
-    put(totR, 5,  fc(`SUM(F${firstR}:F${lastDataR})`, sTotalNum));  // Total col F
-    put(totR, 9,  fc(`SUM(J${firstR}:J${lastDataR})`, sTotalCur));  // Total budget
-    put(totR, 11, fc(`SUM(L${firstR}:L${lastDataR})`, sTotalNum));  // Total views
-    put(totR, 14, fc(`SUM(O${firstR}:O${lastDataR})`, sTotalNum));  // Total clicks
-    put(totR, 17, fc(`SUM(R${firstR}:R${lastDataR})`, sTotalNum));  // Total col R
+    if (getTrafficType() === 'web') {
+        put(totR, 5, fc(`SUM(F${firstR}:F${lastDataR})`, sTotalNum));  // Total purchases
+        put(totR, 6, sc('—', sTotal));
+        put(totR, 7, empty(sSep));
+        put(totR, 8, fc(`SUM(I${firstR}:I${lastDataR})`, sTotalCur));  // Total budget
+    } else {
+        put(totR, 5,  fc(`SUM(F${firstR}:F${lastDataR})`, sTotalNum));  // Total col F
+        put(totR, 9,  fc(`SUM(J${firstR}:J${lastDataR})`, sTotalCur));  // Total budget
+        put(totR, 11, fc(`SUM(L${firstR}:L${lastDataR})`, sTotalNum));  // Total views
+        put(totR, 14, fc(`SUM(O${firstR}:O${lastDataR})`, sTotalNum));  // Total clicks
+        put(totR, 17, fc(`SUM(R${firstR}:R${lastDataR})`, sTotalNum));  // Total col R
+    }
 
     // Cost summary block (with formula references)
     let vr = totR + 2;
     const netRow = vr + 1; // Excel 1-indexed
+    const budgetRef = getTrafficType() === 'web' ? `I${totRx}` : `J${totRx}`;
     put(vr, 0, sc('Max Placement Cost Net', sGray));
     put(vr, 1, empty(sGray));
-    put(vr, 2, fc(`J${totRx}`, sGrayCur)); // reference total budget
+    put(vr, 2, fc(budgetRef, sGrayCur)); // reference total budget
     let lastRow = vr;
 
     if (hasRu) {
@@ -1419,26 +1524,36 @@ function exportToExcel() {
         e: { r: lastRow, c: COLS - 1 }
     });
 
-    ws['!cols'] = [
-        { wch: 21 }, { wch: 12 }, { wch: 16 }, { wch: 8 }, { wch: 5 },
-        { wch: 15 }, { wch: 15 }, { wch: 3 }, { wch: 4 }, { wch: 23 },
-        { wch: 4 },
-        { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 10 },
-        { wch: 20 }, { wch: 16 }, { wch: 16 },
-    ];
-
-    ws['!merges'] = [
-        { s: { r: 6, c: 2 }, e: { r: 6, c: 4 } },       // Document merge
-        { s: { r: 10, c: 3 }, e: { r: 10, c: 4 } },      // Period header (shifted)
-        { s: { r: 10, c: 6 }, e: { r: 10, c: 8 } },      // Cost per event header (shifted)
-        { s: { r: totR, c: 0 }, e: { r: totR, c: 4 } },   // Total label merge
-    ];
+    if (getTrafficType() === 'web') {
+        ws['!cols'] = [
+            { wch: 21 }, { wch: 12 }, { wch: 16 }, { wch: 8 }, { wch: 5 },
+            { wch: 18 }, { wch: 18 }, { wch: 5 }, { wch: 20 },
+        ];
+        ws['!merges'] = [
+            { s: { r: 6, c: 2 }, e: { r: 6, c: 4 } },
+            { s: { r: totR, c: 0 }, e: { r: totR, c: 4 } },
+        ];
+    } else {
+        ws['!cols'] = [
+            { wch: 21 }, { wch: 12 }, { wch: 16 }, { wch: 8 }, { wch: 5 },
+            { wch: 15 }, { wch: 15 }, { wch: 3 }, { wch: 4 }, { wch: 23 },
+            { wch: 4 },
+            { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 10 },
+            { wch: 20 }, { wch: 16 }, { wch: 16 },
+        ];
+        ws['!merges'] = [
+            { s: { r: 6, c: 2 }, e: { r: 6, c: 4 } },       // Document merge
+            { s: { r: 10, c: 3 }, e: { r: 10, c: 4 } },      // Period header (shifted)
+            { s: { r: 10, c: 6 }, e: { r: 10, c: 8 } },      // Cost per event header (shifted)
+            { s: { r: totR, c: 0 }, e: { r: totR, c: 4 } },   // Total label merge
+        ];
+    }
 
     // ── Create workbook & inject logo ──
     const wb = XLSX.utils.book_new();
-    const sheetName = cpaEvent
-        ? `One ${cpaEvent.charAt(0).toUpperCase() + cpaEvent.slice(1)}`
-        : 'Media Plan';
+    const sheetName = getTrafficType() === 'web'
+        ? 'Web Traffic'
+        : (cpaEvent ? `One ${cpaEvent.charAt(0).toUpperCase() + cpaEvent.slice(1)}` : 'Media Plan');
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
     const fileName = `MediaPlan_${client || 'Draft'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -1456,7 +1571,7 @@ async function injectLogoAndDownload(xlsxArrayBuffer, fileName, sheetName) {
 
     // 1. Add the image file
     const logoBytes = base64ToUint8Array(LOGO_BASE64);
-    zip.file('xl/media/image1.jpeg', logoBytes);
+    zip.file('xl/media/image1.png', logoBytes);
 
     // 2. Add drawing1.xml (defines where the image sits)
     const drawingXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1466,11 +1581,11 @@ async function injectLogoAndDownload(xlsxArrayBuffer, fileName, sheetName) {
   <xdr:oneCellAnchor>
     <xdr:from>
       <xdr:col>0</xdr:col>
-      <xdr:colOff>28575</xdr:colOff>
+      <xdr:colOff>85725</xdr:colOff>
       <xdr:row>0</xdr:row>
-      <xdr:rowOff>47625</xdr:rowOff>
+      <xdr:rowOff>0</xdr:rowOff>
     </xdr:from>
-    <xdr:ext cx="1657350" cy="600075"/>
+    <xdr:ext cx="2371725" cy="742950"/>
     <xdr:pic>
       <xdr:nvPicPr>
         <xdr:cNvPr id="2" name="Logo"/>
@@ -1493,7 +1608,7 @@ async function injectLogoAndDownload(xlsxArrayBuffer, fileName, sheetName) {
     // 3. Add drawing1.xml.rels (links drawing to image)
     const drawingRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.jpeg"/>
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>
 </Relationships>`;
     zip.file('xl/drawings/_rels/drawing1.xml.rels', drawingRels);
 

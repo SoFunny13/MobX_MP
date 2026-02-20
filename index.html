@@ -49,6 +49,13 @@
                     </select>
                     <input type="text" id="cpa-event-custom" class="cpa-custom-input" placeholder="Enter custom event name" style="display:none;">
                 </div>
+                <div class="form-group">
+                    <label for="traffic-type">Traffic Type</label>
+                    <select id="traffic-type">
+                        <option value="app">App</option>
+                        <option value="web">Web</option>
+                    </select>
+                </div>
                 <div class="form-group form-group-wide">
                     <label>App Links</label>
                     <div class="app-links-grid">
@@ -118,35 +125,36 @@
                 <div class="source-group">
                     <h3 class="source-group-title">Base</h3>
                     <div class="source-checkboxes">
-                        <label class="source-label"><input type="checkbox" data-source="xiaomi" data-label="Xiaomi"> Xiaomi</label>
-                        <label class="source-label"><input type="checkbox" data-source="xiaomi_codev" data-label="Xiaomi CoDev"> Xiaomi CoDev</label>
-                        <label class="source-label"><input type="checkbox" data-source="huawei" data-label="Huawei"> Huawei</label>
-                        <label class="source-label"><input type="checkbox" data-source="appnext" data-label="Appnext"> Appnext</label>
-                        <label class="source-label"><input type="checkbox" data-source="xapads" data-label="Xapads"> Xapads</label>
-                        <label class="source-label"><input type="checkbox" data-source="mintegral" data-label="Mintegral"> Mintegral</label>
-                        <label class="source-label"><input type="checkbox" data-source="unity" data-label="Unity Ads"> Unity Ads</label>
-                        <label class="source-label"><input type="checkbox" data-source="moloco" data-label="Moloco"> Moloco</label>
-                        <label class="source-label"><input type="checkbox" data-source="yandex" data-label="Yandex"> Yandex</label>
-                        <label class="source-label"><input type="checkbox" data-source="vk" data-label="VK Ads"> VK Ads</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="xiaomi" data-label="Xiaomi"> Xiaomi</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="xiaomi_codev" data-label="Xiaomi CoDev"> Xiaomi CoDev</label>
+                        <label class="source-label" data-traffic="web"><input type="checkbox" data-source="xiaomi_web" data-label="Xiaomi Web"> Xiaomi Web</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="huawei" data-label="Huawei"> Huawei</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="appnext" data-label="Appnext"> Appnext</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="xapads" data-label="Xapads"> Xapads</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="mintegral" data-label="Mintegral"> Mintegral</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="unity" data-label="Unity Ads"> Unity Ads</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="moloco" data-label="Moloco"> Moloco</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="yandex" data-label="Yandex"> Yandex</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="vk" data-label="VK Ads"> VK Ads</label>
                     </div>
                 </div>
                 <div class="source-group">
                     <h3 class="source-group-title">Other</h3>
                     <div class="source-checkboxes">
-                        <label class="source-label"><input type="checkbox" data-source="applovin" data-label="AppLovin"> AppLovin</label>
-                        <label class="source-label"><input type="checkbox" data-source="digital_turbine" data-label="Digital Turbine"> Digital Turbine</label>
-                        <label class="source-label"><input type="checkbox" data-source="facebook" data-label="Facebook"> Facebook</label>
-                        <label class="source-label"><input type="checkbox" data-source="google" data-label="Google UAC"> Google UAC</label>
-                        <label class="source-label"><input type="checkbox" data-source="ironsource" data-label="IronSource"> IronSource</label>
-                        <label class="source-label"><input type="checkbox" data-source="liftoff" data-label="Liftoff"> Liftoff</label>
-                        <label class="source-label"><input type="checkbox" data-source="oppo" data-label="Oppo"> Oppo</label>
-                        <label class="source-label"><input type="checkbox" data-source="realme" data-label="Realme"> Realme</label>
-                        <label class="source-label"><input type="checkbox" data-source="samsung" data-label="Samsung"> Samsung</label>
-                        <label class="source-label"><input type="checkbox" data-source="snapchat" data-label="Snapchat"> Snapchat</label>
-                        <label class="source-label"><input type="checkbox" data-source="tiktok" data-label="TikTok"> TikTok</label>
-                        <label class="source-label"><input type="checkbox" data-source="transsion" data-label="Transsion"> Transsion</label>
-                        <label class="source-label"><input type="checkbox" data-source="twitter" data-label="X (Twitter)"> X (Twitter)</label>
-                        <label class="source-label"><input type="checkbox" data-source="vivo" data-label="Vivo"> Vivo</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="applovin" data-label="AppLovin"> AppLovin</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="digital_turbine" data-label="Digital Turbine"> Digital Turbine</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="facebook" data-label="Facebook"> Facebook</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="google" data-label="Google UAC"> Google UAC</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="ironsource" data-label="IronSource"> IronSource</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="liftoff" data-label="Liftoff"> Liftoff</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="oppo" data-label="Oppo"> Oppo</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="realme" data-label="Realme"> Realme</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="samsung" data-label="Samsung"> Samsung</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="snapchat" data-label="Snapchat"> Snapchat</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="tiktok" data-label="TikTok"> TikTok</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="transsion" data-label="Transsion"> Transsion</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="twitter" data-label="X (Twitter)"> X (Twitter)</label>
+                        <label class="source-label" data-traffic="app"><input type="checkbox" data-source="vivo" data-label="Vivo"> Vivo</label>
                     </div>
                 </div>
             </div>
