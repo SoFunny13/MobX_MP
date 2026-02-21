@@ -53,7 +53,20 @@ const geoAddDatalist = document.getElementById('geo-add-options');
 const trafficTypeSelect = document.getElementById('traffic-type');
 
 function getMode() {
-    return cpaEventSelect.value === 'Installs' ? 'installs' : 'purchases';
+    const v = cpaEventSelect.value;
+    if (v === 'Installs') return 'installs';
+    if (v === 'Commission') return 'commission';
+    return 'purchases';
+}
+
+function isCommissionMode() {
+    const m = getMode();
+    return m === 'commission';
+}
+
+function getCommissionPct() {
+    const el = document.getElementById('commission-pct');
+    return parseFloat(el ? el.value : 0) || 0;
 }
 
 function getTrafficType() {
@@ -72,6 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
     verticalSelect.addEventListener('change', reapplyAllBenchmarks);
     appLinkAndroid.addEventListener('blur', () => onAppLinkBlur(appLinkAndroid, appLinkAndroidStatus));
     appLinkIos.addEventListener('blur', () => onAppLinkBlur(appLinkIos, appLinkIosStatus));
+    const commPctInput = document.getElementById('commission-pct');
+    if (commPctInput) commPctInput.addEventListener('input', updateVatVisibility);
     renderTableStructure();
     initGeoDatalist();
     initGeoMultiSelect();
@@ -214,6 +229,8 @@ function onCpaEventChange() {
     renderTableStructure();
     recalcTotals();
     updateVatVisibility();
+    const commGroup = document.getElementById('commission-pct-group');
+    if (commGroup) commGroup.style.display = isCommissionMode() ? 'block' : 'none';
 }
 
 function onTrafficTypeChange() {
@@ -249,7 +266,40 @@ function renderTableStructure() {
         return;
     }
     const mode = getMode();
-    if (mode === 'installs') {
+    if (mode === 'commission') {
+        thead.innerHTML = `<tr class="header-row">
+            <th class="col-channel">Channel</th>
+            <th class="col-platform">Platform</th>
+            <th class="col-geo">GEO</th>
+            <th class="col-period">Period</th>
+            <th class="col-views">Views</th>
+            <th class="col-cpm">CPM</th>
+            <th class="col-ctr">CTR, %</th>
+            <th class="col-clicks">Total Clicks</th>
+            <th class="col-cpc">CPC</th>
+            <th class="col-cr-install">CR install to install, %</th>
+            <th class="col-installs">Total Installs</th>
+            <th class="col-cpi">CPI</th>
+            <th class="col-cr-purchase">CR install to purchase, %</th>
+            <th class="col-purchases">Total Purchases</th>
+            <th class="col-cpp">Cost per purchase</th>
+            <th class="col-budget">Total Cost</th>
+            <th class="col-actions"></th>
+        </tr>`;
+        tfoot.innerHTML = `<tr class="total-row" id="total-row">
+            <td colspan="4" class="total-label">Total</td>
+            <td id="total-views">0</td>
+            <td>—</td><td>—</td>
+            <td id="total-clicks">0</td>
+            <td>—</td><td>—</td>
+            <td id="total-installs">0</td>
+            <td>—</td><td>—</td>
+            <td id="total-purchases">0</td>
+            <td>—</td>
+            <td id="total-cost">0</td>
+            <td></td>
+        </tr>`;
+    } else if (mode === 'installs') {
         thead.innerHTML = `<tr class="header-row">
             <th class="col-channel">Channel</th>
             <th class="col-platform">Platform</th>
@@ -257,7 +307,7 @@ function renderTableStructure() {
             <th class="col-period">Period</th>
             <th class="col-installs">Total Installs</th>
             <th class="col-cpi">CPI</th>
-            <th class="col-budget">Total Cost</th>
+            <th class="col-budget">Cost</th>
             <th class="col-views">Views</th>
             <th class="col-cpm">CPM</th>
             <th class="col-ctr">CTR, %</th>
@@ -291,7 +341,7 @@ function renderTableStructure() {
             <th class="col-period">Period</th>
             <th class="col-events">Total Purchases</th>
             <th class="col-cpa">CPA Rate</th>
-            <th class="col-budget">Total Cost</th>
+            <th class="col-budget">Cost</th>
             <th class="col-views">Views</th>
             <th class="col-cpm">CPM</th>
             <th class="col-ctr">CTR, %</th>
@@ -473,6 +523,21 @@ function createSourceRow(sourceKey, label, platform, geo) {
         <td><input type="text" inputmode="decimal" data-field="purchases" class="calculated" readonly tabindex="-1"></td>
         <td><input type="text" inputmode="decimal" data-field="cpp" class="calculated" readonly tabindex="-1"></td>
         <td><button class="btn-delete" title="Remove row">&times;</button></td>`;
+    } else if (isCommissionMode()) {
+        tr.innerHTML = baseCols + `
+        <td><input type="text" inputmode="decimal" data-field="views" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpm" class="calculated" readonly tabindex="-1"></td>
+        <td><span class="pct-wrap"><input type="text" inputmode="decimal" data-field="ctr" placeholder="e.g. 1.2" class="editable-calc"><span class="pct-sign">%</span></span></td>
+        <td><input type="text" inputmode="decimal" data-field="clicks" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpc" class="calculated" readonly tabindex="-1"></td>
+        <td><span class="pct-wrap"><input type="text" inputmode="decimal" data-field="crInstall" placeholder="e.g. 3" class="editable-calc"><span class="pct-sign">%</span></span></td>
+        <td><input type="text" inputmode="decimal" data-field="installs" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpi" placeholder="CPI" class="editable-calc"></td>
+        <td><span class="pct-wrap"><input type="text" inputmode="decimal" data-field="crPurchase" placeholder="e.g. 5"><span class="pct-sign">%</span></span></td>
+        <td><input type="text" inputmode="decimal" data-field="purchases" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpp" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="budget" placeholder="Total Cost"></td>
+        <td><button class="btn-delete" title="Remove row">&times;</button></td>`;
     } else {
         tr.innerHTML = baseCols + `
         <td><input type="text" inputmode="decimal" data-field="events" class="calculated" readonly tabindex="-1"></td>
@@ -499,8 +564,25 @@ function createSourceRow(sourceKey, label, platform, geo) {
 
     const geoInput = tr.querySelector('[data-field="geo"]');
     if (geo) geoInput.value = geo;
-    geoInput.addEventListener('change', updateVatVisibility);
+    geoInput.addEventListener('change', () => {
+        updateVatVisibility();
+        ['ctr','cpi','crInstall'].forEach(f => {
+            const el = tr.querySelector(`[data-field="${f}"]`);
+            if (el) el.dataset.auto = '1';
+        });
+        applyBenchmarks(tr);
+    });
     geoInput.addEventListener('blur', () => { updateVatVisibility(); applyBenchmarks(tr); });
+    geoInput.addEventListener('input', () => {
+        const code = extractGeoCode(geoInput.value.trim());
+        if (code && code.length === 2) {
+            ['ctr','cpi','crInstall'].forEach(f => {
+                const el = tr.querySelector(`[data-field="${f}"]`);
+                if (el) el.dataset.auto = '1';
+            });
+            applyBenchmarks(tr);
+        }
+    });
 
     // Track manual edits on benchmark fields
     const ctrInput = tr.querySelector('[data-field="ctr"]');
@@ -508,7 +590,7 @@ function createSourceRow(sourceKey, label, platform, geo) {
     if (ctrInput) ctrInput.addEventListener('input', () => { delete ctrInput.dataset.auto; });
     if (cpiInput) cpiInput.addEventListener('input', () => { delete cpiInput.dataset.auto; });
 
-    if (mode === 'purchases') {
+    if (mode === 'purchases' || isCommissionMode()) {
         const crInstallInput = tr.querySelector('[data-field="crInstall"]');
         if (crInstallInput) crInstallInput.addEventListener('input', () => { delete crInstallInput.dataset.auto; });
     }
@@ -705,6 +787,21 @@ function addRow() {
         <td><input type="text" inputmode="decimal" data-field="purchases" class="calculated" readonly tabindex="-1"></td>
         <td><input type="text" inputmode="decimal" data-field="cpp" class="calculated" readonly tabindex="-1"></td>
         <td><button class="btn-delete" title="Remove row">&times;</button></td>`;
+    } else if (isCommissionMode()) {
+        tr.innerHTML = baseCols + `
+        <td><input type="text" inputmode="decimal" data-field="views" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpm" class="calculated" readonly tabindex="-1"></td>
+        <td><span class="pct-wrap"><input type="text" inputmode="decimal" data-field="ctr" placeholder="e.g. 1.2" class="editable-calc"><span class="pct-sign">%</span></span></td>
+        <td><input type="text" inputmode="decimal" data-field="clicks" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpc" class="calculated" readonly tabindex="-1"></td>
+        <td><span class="pct-wrap"><input type="text" inputmode="decimal" data-field="crInstall" placeholder="e.g. 3" class="editable-calc"><span class="pct-sign">%</span></span></td>
+        <td><input type="text" inputmode="decimal" data-field="installs" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpi" placeholder="CPI" class="editable-calc"></td>
+        <td><span class="pct-wrap"><input type="text" inputmode="decimal" data-field="crPurchase" placeholder="e.g. 5"><span class="pct-sign">%</span></span></td>
+        <td><input type="text" inputmode="decimal" data-field="purchases" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="cpp" class="calculated" readonly tabindex="-1"></td>
+        <td><input type="text" inputmode="decimal" data-field="budget" placeholder="Total Cost"></td>
+        <td><button class="btn-delete" title="Remove row">&times;</button></td>`;
     } else {
         tr.innerHTML = baseCols + `
         <td><input type="text" inputmode="decimal" data-field="events" class="calculated" readonly tabindex="-1"></td>
@@ -733,15 +830,32 @@ function addRow() {
     tr.querySelectorAll('input[data-field="budget"], input[data-field="cpa"], input[data-field="cpi"], input[data-field="purchases"], input[data-field="cpp"], input[data-field="crPurchase"], input[data-field="crInstall"], input[data-field="ctr"]').forEach(wireNumericFormat);
 
     const geoInput = tr.querySelector('[data-field="geo"]');
-    geoInput.addEventListener('change', updateVatVisibility);
+    geoInput.addEventListener('change', () => {
+        updateVatVisibility();
+        ['ctr','cpi','crInstall'].forEach(f => {
+            const el = tr.querySelector(`[data-field="${f}"]`);
+            if (el) el.dataset.auto = '1';
+        });
+        applyBenchmarks(tr);
+    });
     geoInput.addEventListener('blur', () => { updateVatVisibility(); applyBenchmarks(tr); });
+    geoInput.addEventListener('input', () => {
+        const code = extractGeoCode(geoInput.value.trim());
+        if (code && code.length === 2) {
+            ['ctr','cpi','crInstall'].forEach(f => {
+                const el = tr.querySelector(`[data-field="${f}"]`);
+                if (el) el.dataset.auto = '1';
+            });
+            applyBenchmarks(tr);
+        }
+    });
 
     const ctrInput = tr.querySelector('[data-field="ctr"]');
     const cpiInput = tr.querySelector('[data-field="cpi"]');
     if (ctrInput) ctrInput.addEventListener('input', () => { delete ctrInput.dataset.auto; });
     if (cpiInput) cpiInput.addEventListener('input', () => { delete cpiInput.dataset.auto; });
 
-    if (mode === 'purchases') {
+    if (mode === 'purchases' || isCommissionMode()) {
         const crInstallInput = tr.querySelector('[data-field="crInstall"]');
         if (crInstallInput) crInstallInput.addEventListener('input', () => { delete crInstallInput.dataset.auto; });
     }
@@ -868,17 +982,20 @@ function recalcRow(tr) {
     const cpi = numField(tr, 'cpi');
     const noViews = isNoViewsSource(tr);
 
-    // installs = budget / cpi
-    const installs = (cpi > 0) ? budget / cpi : 0;
+    const effectiveBudget = budget;
+
+    // installs = effectiveBudget / cpi
+    const installs = (cpi > 0) ? effectiveBudget / cpi : 0;
     setCalc(tr, 'installs', installs);
 
-    if (mode === 'installs') {
-        const crInstallBenchmark = getInternalCrInstall(tr);
+    if (isCommissionMode()) {
+        const crInstallPct = numField(tr, 'crInstall'); // visible field
+        const crInstall = crInstallPct / 100;
 
-        // clicks and cpc always calculated from CR install
-        const clicks = (crInstallBenchmark > 0) ? installs / crInstallBenchmark : 0;
+        // clicks and cpc calculated from visible crInstall field
+        const clicks = (crInstall > 0) ? installs / crInstall : 0;
         setCalc(tr, 'clicks', clicks);
-        const cpc = (clicks > 0) ? budget / clicks : 0;
+        const cpc = (clicks > 0) ? effectiveBudget / clicks : 0;
         setCalc(tr, 'cpc', cpc);
 
         if (noViews) {
@@ -890,7 +1007,7 @@ function recalcRow(tr) {
             const ctr = ctrPct / 100;
             const views = (ctr > 0) ? clicks / ctr : 0;
             setCalc(tr, 'views', views);
-            const cpm = (views > 0) ? (budget / views) * 1000 : 0;
+            const cpm = (views > 0) ? (effectiveBudget / views) * 1000 : 0;
             setCalc(tr, 'cpm', cpm);
         }
 
@@ -900,9 +1017,40 @@ function recalcRow(tr) {
         const purchases = installs * crPurchase;
         setCalc(tr, 'purchases', Math.round(purchases));
 
-        // cpp = budget / purchases
-        const cpp = (purchases > 0) ? budget / purchases : 0;
+        // cpp = effectiveBudget / purchases
+        const cpp = (purchases > 0) ? effectiveBudget / purchases : 0;
         setCalc(tr, 'cpp', cpp);
+    } else if (mode === 'installs') {
+        const crInstallBenchmark = getInternalCrInstall(tr);
+
+        // clicks and cpc always calculated from CR install benchmark
+        const clicks = (crInstallBenchmark > 0) ? installs / crInstallBenchmark : 0;
+        setCalc(tr, 'clicks', clicks);
+        const cpc = (clicks > 0) ? effectiveBudget / clicks : 0;
+        setCalc(tr, 'cpc', cpc);
+
+        if (noViews) {
+            setDash(tr, 'views');
+            setDash(tr, 'cpm');
+            setDash(tr, 'ctr');
+        } else {
+            const ctrPct = numField(tr, 'ctr');
+            const ctr = ctrPct / 100;
+            const views = (ctr > 0) ? clicks / ctr : 0;
+            setCalc(tr, 'views', views);
+            const cpm = (views > 0) ? (effectiveBudget / views) * 1000 : 0;
+            setCalc(tr, 'cpm', cpm);
+        }
+
+        // purchases = installs × crPurchase
+        const crPurchasePctI = numField(tr, 'crPurchase');
+        const crPurchaseI = crPurchasePctI / 100;
+        const purchasesI = installs * crPurchaseI;
+        setCalc(tr, 'purchases', Math.round(purchasesI));
+
+        // cpp = effectiveBudget / purchases
+        const cppI = (purchasesI > 0) ? effectiveBudget / purchasesI : 0;
+        setCalc(tr, 'cpp', cppI);
     } else {
         // Purchases mode
         const crInstallPct = numField(tr, 'crInstall');
@@ -984,7 +1132,7 @@ function recalcTotals() {
     if (clicksEl) clicksEl.textContent = fmtNum(totalClicks);
     if (viewsEl) viewsEl.textContent = fmtNum(totalViews);
 
-    if (getTrafficType() === 'web' || mode === 'installs') {
+    if (getTrafficType() === 'web' || mode === 'installs' || isCommissionMode()) {
         let totalPurchases = 0;
         tbody.querySelectorAll('tr').forEach(tr => {
             totalPurchases += numField(tr, 'purchases');
@@ -1044,8 +1192,6 @@ function onCurrencyChange() {
 function updateVatVisibility() {
     const hasRu = Array.from(tbody.querySelectorAll('[data-field="geo"]'))
         .some(inp => extractGeoCode(inp.value) === 'RU');
-    // VAT row only shown for RU, but the whole section is always visible
-    document.getElementById('vat-row-line').style.display = hasRu ? 'flex' : 'none';
     let totalCost = 0;
     tbody.querySelectorAll('tr').forEach(tr => {
         totalCost += numField(tr, 'budget');
@@ -1053,13 +1199,33 @@ function updateVatVisibility() {
     updateVat(totalCost, hasRu);
 }
 
-function updateVat(netCost, hasRu) {
+function updateVat(totalBudget, hasRu) {
     const sym = CURRENCY_SYMBOLS[currencySelect.value] || '';
-    const vat = hasRu ? netCost * 0.2 : 0;
-    const gross = netCost + vat;
-    document.getElementById('vat-net').textContent = sym + fmtNum(netCost);
-    document.getElementById('vat-amount').textContent = sym + fmtNum(vat);
-    document.getElementById('vat-gross').textContent = sym + fmtNum(gross);
+    const commissionRowLine = document.getElementById('commission-row-line');
+    const vatRowLine = document.getElementById('vat-row-line');
+    const netLabel = document.getElementById('vat-net-label');
+
+    if (isCommissionMode()) {
+        if (vatRowLine) vatRowLine.style.display = 'none';
+        if (commissionRowLine) commissionRowLine.style.display = 'flex';
+        const pct = getCommissionPct();
+        const netSpend = totalBudget;
+        const commissionAmt = netSpend * pct / 100;
+        const grossTotal = netSpend + commissionAmt;
+        if (netLabel) netLabel.textContent = 'Net Media Spend';
+        document.getElementById('vat-net').textContent = sym + fmtNum(netSpend);
+        document.getElementById('commission-amount').textContent = sym + fmtNum(commissionAmt);
+        document.getElementById('vat-gross').textContent = sym + fmtNum(grossTotal);
+    } else {
+        if (commissionRowLine) commissionRowLine.style.display = 'none';
+        if (vatRowLine) vatRowLine.style.display = hasRu ? 'flex' : 'none';
+        if (netLabel) netLabel.textContent = 'Max Placement Cost Net';
+        const vat = hasRu ? totalBudget * 0.2 : 0;
+        const gross = totalBudget + vat;
+        document.getElementById('vat-net').textContent = sym + fmtNum(totalBudget);
+        document.getElementById('vat-amount').textContent = sym + fmtNum(vat);
+        document.getElementById('vat-gross').textContent = sym + fmtNum(gross);
+    }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -1185,11 +1351,17 @@ function exportToExcel() {
         if (getTrafficType() === 'web') {
             base.purchases = numField(tr, 'purchases');
             base.cpp = numField(tr, 'cpp');
+        } else if (isCommissionMode()) {
+            base.crInstall = numField(tr, 'crInstall') / 100; // from visible field
+            base.crPurchase = numField(tr, 'crPurchase') / 100;
+            base.purchases = numField(tr, 'purchases');
+            base.cpp = numField(tr, 'cpp');
         } else if (mode === 'installs') {
             base.crPurchase = numField(tr, 'crPurchase') / 100;
             base.purchases = numField(tr, 'purchases');
             base.cpp = numField(tr, 'cpp');
             base.crInstallBenchmark = getInternalCrInstall(tr); // ratio for formula
+            base.commFactor = 1;
         } else {
             base.events = numField(tr, 'events');
             base.cpa = numField(tr, 'cpa');
@@ -1368,15 +1540,27 @@ function exportToExcel() {
     put(8, 2, sc(verticalLabel, sValue));
 
     // Row 10: Headers
-    let headerTexts, COLS;
+    let headerTexts, COLS, sepCols;
     if (getTrafficType() === 'web') {
         COLS = 9;
+        sepCols = new Set([4]);
         headerTexts = [
             'Channel', 'Platform', 'Targeting', 'Period', '',
             'Total Purchases', 'Cost per Purchase', '', 'Total Budget'
         ];
+    } else if (isCommissionMode()) {
+        COLS = 18;
+        sepCols = new Set([4, 16]);
+        headerTexts = [
+            'Channel', 'Platform', 'Targeting', 'Period', '',
+            'Views', 'CPM', 'CTR', 'Total Clicks', 'CPC',
+            'CR install to install', 'Total Installs', 'CPI',
+            'CR install to purchase', 'Total Purchases', 'Cost per purchase',
+            '', 'Total Cost'
+        ];
     } else if (mode === 'installs') {
         COLS = 19;
+        sepCols = new Set([4, 10]);
         headerTexts = [
             'Channel', 'Platform', 'Targeting', 'Period', '',
             'Total installs', 'CPI', '', '',
@@ -1386,6 +1570,7 @@ function exportToExcel() {
         ];
     } else {
         COLS = 19;
+        sepCols = new Set([4, 10]);
         headerTexts = [
             'Channel', 'Platform', 'Targeting', 'Period', '',
             'Total Purchases', 'Cost per Purchase', '', '',
@@ -1395,7 +1580,7 @@ function exportToExcel() {
         ];
     }
     for (let c = 0; c < COLS; c++) {
-        put(10, c, sc(headerTexts[c] || '', (c === 4 || c === 10) ? sSep : sHeader));
+        put(10, c, sc(headerTexts[c] || '', sepCols.has(c) ? sSep : sHeader));
     }
 
     // Row 11+: Data rows (with Excel formulas)
@@ -1417,6 +1602,29 @@ function exportToExcel() {
             put(row, 6, nc(r.cpp, sCurrencyDec));               // G: CPP (input)
             put(row, 7, empty(sSep));
             put(row, 8, nc(r.budget, sCurrency));               // I: Budget (input)
+        } else if (isCommissionMode()) {
+            // Commission: new column order
+            // Input: H=CTR, K=CRinst, M=CPI, N=CRpur, R=TotalCost
+            // Formulas: F=views, G=cpm, I=clicks, J=cpc, L=installs, O=purchases, P=cpp
+            if (r.noViews) {
+                put(row, 5,  sc('—', sData));                                   // F: views — n/a
+                put(row, 6,  sc('—', sData));                                   // G: cpm — n/a
+                put(row, 7,  sc('—', sData));                                   // H: CTR — n/a
+            } else {
+                put(row, 5,  fc(`I${R}/H${R}`, sNumber));                       // F: views = clicks/ctr
+                put(row, 6,  fc(`(R${R}/F${R})*1000`, sCurrencyDec));           // G: cpm = (budget/views)*1000
+                put(row, 7,  nc(r.ctr, sPercent));                              // H: CTR (input)
+            }
+            put(row, 8,  fc(`L${R}/K${R}`, sNumber));                           // I: clicks = installs/crInstall
+            put(row, 9,  fc(`R${R}/I${R}`, sCurrencyDec));                      // J: cpc = budget/clicks
+            put(row, 10, nc(r.crInstall, sPercent));                            // K: CR install (input)
+            put(row, 11, fc(`R${R}/M${R}`, sNumber));                           // L: installs = budget/cpi
+            put(row, 12, nc(r.cpi, sCurrencyDec));                              // M: CPI (input)
+            put(row, 13, nc(r.crPurchase, sPercent));                           // N: CR purchase (input)
+            put(row, 14, fc(`L${R}*N${R}`, sNumber));                           // O: purchases = installs*crPurchase
+            put(row, 15, fc(`R${R}/O${R}`, sCurrencyDec));                      // P: cpp = budget/purchases
+            put(row, 16, empty(sSep));                                          // Q: sep
+            put(row, 17, nc(r.budget, sCurrency));                              // R: Total Cost (input)
         } else if (mode === 'installs') {
             // Input: G=CPI, J=Budget, N=CTR, Q=CR purchase
             // Formulas: F=installs, L=views, M=cpm, O=clicks, P=cpc, R=purchases, S=cpp
@@ -1435,9 +1643,9 @@ function exportToExcel() {
                 put(row, 12, sc('—', sData));                     // M: cpm — n/a
                 put(row, 13, sc('—', sData));                     // N: CTR — n/a
             } else {
-                put(row, 11, fc(`O${R}/N${R}`, sNumber));             // L: views = clicks/ctr
-                put(row, 12, fc(`(J${R}/L${R})*1000`, sCurrencyDec)); // M: cpm = (budget/views)*1000
-                put(row, 13, nc(r.ctr, sPercent));                    // N: CTR (input)
+                put(row, 11, fc(`O${R}/N${R}`, sNumber));                      // L: views = clicks/ctr
+                put(row, 12, fc(`(J${R}/L${R})*1000`, sCurrencyDec));          // M: cpm = (budget/views)*1000
+                put(row, 13, nc(r.ctr, sPercent));                             // N: CTR (input)
             }
             put(row, 16, nc(r.crPurchase, sPercent));             // Q: CR purchase (input)
             put(row, 17, fc(`F${R}*Q${R}`, sNumber));             // R: purchases = installs*crPurchase
@@ -1475,7 +1683,7 @@ function exportToExcel() {
     const totRx = totR + 1; // Excel 1-indexed totals row
 
     put(totR, 0, sc('Total', sTotal));
-    for (let c = 1; c < COLS; c++) put(totR, c, empty((c === 4 || c === 10) ? sSep : sTotal));
+    for (let c = 1; c < COLS; c++) put(totR, c, empty(sepCols.has(c) ? sSep : sTotal));
 
     // SUM formulas for totals
     if (getTrafficType() === 'web') {
@@ -1483,6 +1691,12 @@ function exportToExcel() {
         put(totR, 6, sc('—', sTotal));
         put(totR, 7, empty(sSep));
         put(totR, 8, fc(`SUM(I${firstR}:I${lastDataR})`, sTotalCur));  // Total budget
+    } else if (isCommissionMode()) {
+        put(totR, 5,  fc(`SUM(F${firstR}:F${lastDataR})`, sTotalNum));  // Total views
+        put(totR, 8,  fc(`SUM(I${firstR}:I${lastDataR})`, sTotalNum));  // Total clicks
+        put(totR, 11, fc(`SUM(L${firstR}:L${lastDataR})`, sTotalNum));  // Total installs
+        put(totR, 14, fc(`SUM(O${firstR}:O${lastDataR})`, sTotalNum));  // Total purchases
+        put(totR, 17, fc(`SUM(R${firstR}:R${lastDataR})`, sTotalCur));  // Total cost
     } else {
         put(totR, 5,  fc(`SUM(F${firstR}:F${lastDataR})`, sTotalNum));  // Total col F
         put(totR, 9,  fc(`SUM(J${firstR}:J${lastDataR})`, sTotalCur));  // Total budget
@@ -1493,30 +1707,48 @@ function exportToExcel() {
 
     // Cost summary block (with formula references)
     let vr = totR + 2;
-    const netRow = vr + 1; // Excel 1-indexed
-    const budgetRef = getTrafficType() === 'web' ? `I${totRx}` : `J${totRx}`;
-    put(vr, 0, sc('Max Placement Cost Net', sGray));
-    put(vr, 1, empty(sGray));
-    put(vr, 2, fc(budgetRef, sGrayCur)); // reference total budget
+    const budgetRef = getTrafficType() === 'web' ? `I${totRx}` : isCommissionMode() ? `R${totRx}` : `J${totRx}`;
     let lastRow = vr;
 
-    if (hasRu) {
+    if (isCommissionMode()) {
+        put(vr, 0, sc('Net Media Spend', sGray));
+        put(vr, 1, empty(sGray));
+        put(vr, 2, fc(budgetRef, sGrayCur));
+        const netRowX = vr + 1;
         vr++;
-        put(vr, 0, sc('VAT', sGray));
-        put(vr, 1, sc('20%', sGray));
-        put(vr, 2, fc(`C${netRow}*0.2`, sGrayCur)); // VAT = net * 20%
+        put(vr, 0, sc('Commission', sGray));
+        put(vr, 1, empty(sGray));
+        put(vr, 2, fc(`C${netRowX}*0`, sGrayCur));
+        vr++;
+        put(vr, 0, sc('Total Cost Gross', sBlue));
+        put(vr, 1, empty(sBlue));
+        put(vr, 2, fc(`C${netRowX}`, sBlueCur));
+        lastRow = vr;
+    } else {
+        const netRow = vr + 1; // Excel 1-indexed
+        put(vr, 0, sc('Max Placement Cost Net', sGray));
+        put(vr, 1, empty(sGray));
+        put(vr, 2, fc(budgetRef, sGrayCur)); // reference total budget
+        lastRow = vr;
+
+        if (hasRu) {
+            vr++;
+            put(vr, 0, sc('VAT', sGray));
+            put(vr, 1, sc('20%', sGray));
+            put(vr, 2, fc(`C${netRow}*0.2`, sGrayCur)); // VAT = net * 20%
+            lastRow = vr;
+        }
+
+        vr++;
+        put(vr, 0, sc('Total cost Gross', sBlue));
+        put(vr, 1, empty(sBlue));
+        if (hasRu) {
+            put(vr, 2, fc(`C${netRow}*1.2`, sBlueCur)); // gross = net * 1.2
+        } else {
+            put(vr, 2, fc(`C${netRow}`, sBlueCur)); // gross = net (no VAT)
+        }
         lastRow = vr;
     }
-
-    vr++;
-    put(vr, 0, sc('Total cost Gross', sBlue));
-    put(vr, 1, empty(sBlue));
-    if (hasRu) {
-        put(vr, 2, fc(`C${netRow}*1.2`, sBlueCur)); // gross = net * 1.2
-    } else {
-        put(vr, 2, fc(`C${netRow}`, sBlueCur)); // gross = net (no VAT)
-    }
-    lastRow = vr;
 
     // ── Worksheet metadata ──
     ws['!ref'] = XLSX.utils.encode_range({
@@ -1532,6 +1764,18 @@ function exportToExcel() {
         ws['!merges'] = [
             { s: { r: 6, c: 2 }, e: { r: 6, c: 4 } },
             { s: { r: totR, c: 0 }, e: { r: totR, c: 4 } },
+        ];
+    } else if (isCommissionMode()) {
+        ws['!cols'] = [
+            { wch: 21 }, { wch: 12 }, { wch: 16 }, { wch: 8 }, { wch: 5 },
+            { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 12 },
+            { wch: 22 }, { wch: 14 }, { wch: 12 },
+            { wch: 22 }, { wch: 16 }, { wch: 18 },
+            { wch: 5 }, { wch: 20 },
+        ];
+        ws['!merges'] = [
+            { s: { r: 6, c: 2 }, e: { r: 6, c: 4 } },       // Document merge
+            { s: { r: totR, c: 0 }, e: { r: totR, c: 4 } },  // Total label merge
         ];
     } else {
         ws['!cols'] = [

@@ -46,9 +46,11 @@
                         <option value="">— Select event —</option>
                         <option value="Purchases">Purchases</option>
                         <option value="Installs">Installs</option>
+                        <option value="Commission">Commission</option>
                     </select>
                     <input type="text" id="cpa-event-custom" class="cpa-custom-input" placeholder="Enter custom event name" style="display:none;">
                 </div>
+
                 <div class="form-group">
                     <label for="traffic-type">Traffic Type</label>
                     <select id="traffic-type">
@@ -185,12 +187,16 @@
             <h2 class="section-title">Cost Summary</h2>
             <div class="vat-grid">
                 <div class="vat-row">
-                    <span class="vat-label">Max Placement Cost Net</span>
+                    <span class="vat-label" id="vat-net-label">Max Placement Cost Net</span>
                     <span class="vat-value" id="vat-net">0</span>
                 </div>
                 <div class="vat-row" id="vat-row-line" style="display: none;">
                     <span class="vat-label">VAT (20%)</span>
                     <span class="vat-value" id="vat-amount">0</span>
+                </div>
+                <div class="vat-row" id="commission-row-line" style="display: none;">
+                    <span class="vat-label">Commission <input type="text" inputmode="decimal" id="commission-pct" value="0" style="width:36px;text-align:right;border:none;border-bottom:1px solid #aaa;background:transparent;font-size:inherit;font-family:inherit">%</span>
+                    <span class="vat-value" id="commission-amount">0</span>
                 </div>
                 <div class="vat-row vat-total">
                     <span class="vat-label">Total Cost Gross</span>
